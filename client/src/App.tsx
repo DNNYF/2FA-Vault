@@ -81,11 +81,22 @@ export default function App() {
     );
   }
 
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (e) {
+      console.error('Failed to logout on backend', e);
+    } finally {
+      setIsLoggedIn(false);
+      setCurrentPage('dashboard');
+    }
+  };
+
   return (
     <AppLayout 
       currentPage={currentPage} 
       onNavigate={(p) => { setCurrentPage(p); updateRecycleCount(); }} 
-      onLogout={() => setIsLoggedIn(false)}
+      onLogout={handleLogout}
       isDark={isDark}
       toggleTheme={toggleTheme}
       recycleCount={recycleCount}
