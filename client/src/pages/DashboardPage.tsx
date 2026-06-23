@@ -21,12 +21,20 @@ export function DashboardPage({ onRecycleUpdate }: { onRecycleUpdate: () => void
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   
-  // Form State
   const [formService, setFormService] = useState('');
   const [formUser, setFormUser] = useState('');
   const [formSecret, setFormSecret] = useState('');
   const [previewCode, setPreviewCode] = useState('');
   const [previewError, setPreviewError] = useState('');
+
+  // Delete Confirm State
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Entry | null>(null);
+
+  const requestDelete = (entry: Entry) => {
+    setDeleteTarget(entry);
+    setDeleteConfirmOpen(true);
+  };
 
   const loadData = async () => {
     try {
@@ -161,7 +169,7 @@ export function DashboardPage({ onRecycleUpdate }: { onRecycleUpdate: () => void
                 className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-backwards"
                 style={{ animationDelay: `${idx * 50}ms` }}
               >
-                <TotpRow entry={entry} now={now} onEdit={() => openEdit(entry)} onDelete={() => deleteEntry(entry.id)} getHslColor={getHslColor} />
+                <TotpRow entry={entry} now={now} onEdit={() => openEdit(entry)} onDelete={() => requestDelete(entry)} getHslColor={getHslColor} />
               </div>
             ))}
           </div>
@@ -200,6 +208,32 @@ export function DashboardPage({ onRecycleUpdate }: { onRecycleUpdate: () => void
               <Button type="submit">Save Account</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <DialogContent onClose={() => setDeleteConfirmOpen(false)}>
+          <DialogHeader>
+            <DialogTitle>Move to Recycle Bin?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to move the 2FA entry for <span className="font-semibold text-foreground">{deleteTarget?.service_name}</span> ({deleteTarget?.username || 'no username'}) to the Recycle Bin?
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={async () => {
+              if (deleteTarget) {
+                await deleteEntry(deleteTarget.id);
+                setDeleteConfirmOpen(false);
+              }
+            }}>
+              Move to Recycle Bin
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 
@@ -42,7 +44,23 @@ export function RecycleBinPage({ onUpdate }: { onUpdate: () => void }) {
     }
   };
 
-  const remove = async (id: number) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<DeletedEntry | 'all' | null>(null);
+
+  const requestRemove = (item: DeletedEntry) => {
+    setDeleteTarget(item);
+    setConfirmText('');
+    setConfirmOpen(true);
+  };
+
+  const requestEmptyAll = () => {
+    setDeleteTarget('all');
+    setConfirmText('');
+    setConfirmOpen(true);
+  };
+
+  const doRemove = async (id: number) => {
     try {
       await api.delete(`/recycle/${id}`);
       toast({ title: 'Permanently deleted' });
@@ -53,8 +71,7 @@ export function RecycleBinPage({ onUpdate }: { onUpdate: () => void }) {
     }
   };
 
-  const emptyAll = async () => {
-    if (!window.confirm('Are you sure you want to permanently delete ALL items in the recycle bin?')) return;
+  const doEmptyAll = async () => {
     try {
       await api.delete('/recycle/empty/all');
       toast({ title: 'Recycle bin emptied' });
@@ -73,7 +90,7 @@ export function RecycleBinPage({ onUpdate }: { onUpdate: () => void }) {
           <p className="text-muted-foreground">Recover recently deleted items.</p>
         </div>
         {items.length > 0 && (
-          <Button variant="destructive" onClick={emptyAll}>
+          <Button variant="destructive" onClick={requestEmptyAll}>
             Empty Bin
           </Button>
         )}
@@ -115,7 +132,7 @@ export function RecycleBinPage({ onUpdate }: { onUpdate: () => void }) {
                     <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => restore(item.id)}>
                       <RefreshCcw className="h-4 w-4 mr-2" /> Restore
                     </Button>
-                    <Button variant="destructive" size="sm" className="flex-1 sm:flex-none" onClick={() => remove(item.id)}>
+                    <Button variant="destructive" size="sm" className="flex-1 sm:flex-none" onClick={() => requestRemove(item)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -125,6 +142,60 @@ export function RecycleBinPage({ onUpdate }: { onUpdate: () => void }) {
           </div>
         )}
       </div>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent onClose={() => setConfirmOpen(false)}>
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="h-5 w-5" /> Permanent Deletion
+            </DialogTitle>
+            <DialogDescription>
+              {deleteTarget === 'all' ? (
+                <span>
+                  This will permanently delete <span className="font-semibold text-foreground">ALL items</span> from the recycle bin. This action cannot be undone.
+                </span>
+              ) : (
+                <span>
+                  Are you sure you want to permanently delete the entry for <span className="font-semibold text-foreground">{(deleteTarget as DeletedEntry)?.service_name}</span> {((deleteTarget as DeletedEntry)?.username) && `(${(deleteTarget as DeletedEntry)?.username})`}? This action cannot be undone.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-4 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Please type <span className="font-bold text-foreground">DELETE</span> to confirm permanent deletion:
+            </p>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="Type DELETE here..."
+              className="w-full bg-background/50"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={confirmText !== 'DELETE'}
+              onClick={async () => {
+                if (confirmText !== 'DELETE') return;
+                if (deleteTarget === 'all') {
+                  await doEmptyAll();
+                } else if (deleteTarget) {
+                  await doRemove((deleteTarget as DeletedEntry).id);
+                }
+                setConfirmOpen(false);
+              }}
+            >
+              Permanently Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
