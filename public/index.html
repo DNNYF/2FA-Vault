@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2FA Auth</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- OTPAuth library for TOTP generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/otpauth/9.3.1/otpauth.umd.min.js"></script>
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app-container">
+        <!-- Auth Screen (Login/Register) -->
+        <div id="auth-screen" class="screen active">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <i class="fa-solid fa-shield-halved auth-logo"></i>
+                    <h2 id="auth-title">Login</h2>
+                    <p id="auth-subtitle">Welcome back to your 2FA Manager</p>
+                </div>
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block" id="auth-submit">Login</button>
+                    <p id="auth-error" class="error-msg"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div id="dashboard-screen" class="screen">
+            <header class="app-header">
+                <div class="header-left">
+                    <i class="fa-solid fa-shield-halved header-logo"></i>
+                    <h1>2FA Auth</h1>
+                </div>
+                <div class="header-search">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Search accounts...">
+                </div>
+                <div class="header-right">
+                    <button id="theme-toggle" class="icon-btn" title="Toggle Theme">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                    <button id="recycle-btn" class="icon-btn" title="Recycle Bin">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span id="recycle-badge" class="badge hidden">0</span>
+                    </button>
+                    <button id="settings-btn" class="icon-btn" title="Settings">
+                        <i class="fa-solid fa-cog"></i>
+                    </button>
+                    <button id="logout-btn" class="icon-btn" title="Logout">
+                        <i class="fa-solid fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </header>
+
+            <main class="dashboard-content">
+                <div class="content-header">
+                    <h2>My Accounts</h2>
+                    <button id="add-btn" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i> Add Account
+                    </button>
+                </div>
+                
+                <div id="entries-grid" class="cards-grid">
+                    <!-- Cards will be rendered here -->
+                </div>
+                
+                <div id="empty-state" class="empty-state hidden">
+                    <i class="fa-solid fa-box-open empty-icon"></i>
+                    <h3>No accounts found</h3>
+                    <p>Add an account to get started or import from a backup.</p>
+                </div>
+            </main>
+        </div>
+
+        <!-- Recycle Bin Screen -->
+        <div id="recycle-screen" class="screen">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="back-to-dashboard" class="icon-btn">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h1>Recycle Bin</h1>
+                </div>
+                <div class="header-right">
+                    <button id="empty-recycle-btn" class="btn btn-danger btn-sm">
+                        <i class="fa-solid fa-dumpster-fire"></i> Empty Bin
+                    </button>
+                </div>
+            </header>
+            <main class="dashboard-content">
+                <div class="info-banner">
+                    <i class="fa-solid fa-circle-info"></i> Items here will be permanently deleted after 10 days.
+                </div>
+                <div id="recycle-list" class="recycle-list">
+                    <!-- Recycle items here -->
+                </div>
+                <div id="recycle-empty-state" class="empty-state hidden">
+                    <i class="fa-solid fa-trash-arrow-up empty-icon"></i>
+                    <h3>Recycle bin is empty</h3>
+                </div>
+            </main>
+        </div>
+        
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <header class="app-header">
+                <div class="header-left">
+                    <button id="back-to-dashboard-settings" class="icon-btn">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h1>Settings</h1>
+                </div>
+            </header>
+            <main class="dashboard-content">
+                <div class="settings-card">
+                    <h3>Data Backup</h3>
+                    <p>Export your accounts to a JSON file or import from an existing backup.</p>
+                    <div class="settings-actions">
+                        <button id="export-btn" class="btn btn-outline">
+                            <i class="fa-solid fa-file-export"></i> Export JSON
+                        </button>
+                        <label for="import-file" class="btn btn-outline">
+                            <i class="fa-solid fa-file-import"></i> Import JSON
+                        </label>
+                        <input type="file" id="import-file" accept=".json" hidden>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="entry-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Add Account</h3>
+                <button class="close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="entry-form">
+                    <input type="hidden" id="entry-id">
+                    <div class="form-group">
+                        <label for="service-name">Service Name (e.g., Google, GitHub)</label>
+                        <input type="text" id="service-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="service-username">Username/Email (Optional)</label>
+                        <input type="text" id="service-username">
+                    </div>
+                    <div class="form-group">
+                        <label for="secret-key">Secret Key</label>
+                        <input type="text" id="secret-key" required placeholder="Base32 formatted secret">
+                        <small class="error-msg hidden" id="secret-error">Invalid Base32 secret key format</small>
+                    </div>
+                    <div class="totp-preview hidden" id="totp-preview">
+                        <span>Preview:</span>
+                        <span class="preview-code" id="preview-code">------</span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline close-modal">Cancel</button>
+                <button type="submit" form="entry-form" class="btn btn-primary" id="save-entry-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-container"></div>
+
+    <script src="js/api.js?v=1.1"></script>
+    <script src="js/ui.js?v=1.1"></script>
+    <script src="js/app.js?v=1.1"></script>
+</body>
+</html>
